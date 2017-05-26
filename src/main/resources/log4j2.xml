@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- status="debug" 可以查看log4j的装配过程-->
+<!-- status="OFF"，可以去掉，它的含义为是否记录log4j2本身的event信息，默认是OFF -->
+<Configuration status="OFF" xmlns:log4j='http://jakarta.apache.org/log4j/2.x/'>
+
+    <Properties>
+        <Property name="TEST_LOG_ROOT">logs</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%p] %m%n"/>
+        </Console>
+        <RollingFile name="TEST_DEBUG" fileName="${sys:TEST_LOG_ROOT}/TEST_debug.log" filePattern="${sys:TEST_LOG_ROOT}/TEST_debug_%d{yyyy_MM_dd}.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%c %M %L]-[%p] %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            </Policies>
+            <Filters>
+                <ThresholdFilter level="error" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="warn" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+
+            <DefaultRolloverStrategy max="7"/>
+
+        </RollingFile>
+        <RollingFile name="TEST_INFO" fileName="${sys:TEST_LOG_ROOT}/TEST_info.log" filePattern="${sys:TEST_LOG_ROOT}/TEST_info_%d{yyyy_MM_dd}.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%c %M %L]-[%p] %m%n"/>
+            <Policies>
+                <!-- 每天一个文件 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            </Policies>
+            <Filters>
+                <ThresholdFilter level="error" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="warn" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <DefaultRolloverStrategy max="7"/>
+
+        </RollingFile>
+        <RollingFile name="TEST_WARN" fileName="${sys:TEST_LOG_ROOT}/TEST_warn.log" filePattern="${sys:TEST_LOG_ROOT}/TEST_warn_%d{yyyy_MM_dd}.log">
+            <PatternLayout>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%c %M %L]-[%p] %m%n</pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            </Policies>
+            <Filters>
+                <ThresholdFilter level="error" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="warn" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <DefaultRolloverStrategy max="7"/>
+        </RollingFile>
+        <RollingFile name="TEST_ERROR" fileName="${sys:TEST_LOG_ROOT}/TEST_error.log" filePattern="${sys:TEST_LOG_ROOT}/TEST_error_%d{yyyy_MM_dd}.log">
+            <PatternLayout>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%c %M %L]-[%p] %m%n</pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+            </Policies>
+            <Filters>
+                <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+
+            <DefaultRolloverStrategy max="7"/>
+
+        </RollingFile>
+
+    </Appenders>
+    <Loggers>
+        <!-- 过滤包 -->
+        <Logger name="xiong" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="TEST_INFO"/>
+            <AppenderRef ref="TEST_ERROR"/>
+            <AppenderRef ref="TEST_WARN"/>
+        </Logger>
+        <!-- <Root level="INFO" additivity="false">
+        	<AppenderRef ref="Console"/>
+            <AppenderRef ref="TEST_INFO"/>
+            <AppenderRef ref="TEST_ERROR"/>
+            <AppenderRef ref="TEST_WARN"/>
+        </Root>  -->
+    </Loggers>
+</Configuration>
