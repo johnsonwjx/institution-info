@@ -72,7 +72,7 @@
     </Appenders>
     <Loggers>
         <!-- 过滤包 -->
-        <Logger name="xiong" level="INFO" additivity="false">
+        <Logger name="xiong" level="ERROR" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="TEST_INFO"/>
             <AppenderRef ref="TEST_ERROR"/>
