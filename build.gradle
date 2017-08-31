@@ -1,5 +1,5 @@
 group 'johnson'
-version '1.0-SNAPSHOT'
+version '2.0.0'
 
 // Apply the java plugin to add support for Java
 apply plugin: 'java'
@@ -29,12 +29,14 @@ repositories {
 launch4j {
     mainClassName = 'xiong.App'
     icon = '../../app.ico'
-    bundledJrePath = 'jre'
     splashFileName = '../../hello.bmp'
+    copyright= 'xiongxiong'
+    companyName= 'xingxiong工作室'
+    downloadUrl='http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html'
 }
 
 task('copytmpFile', type: Copy) {
-    from 'tmp.doc'
+    from 'tmp.docx'
     into 'build/launch4j'
 }
 

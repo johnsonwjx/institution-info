@@ -1,10 +1,16 @@
 package xiong;
 
+import org.apache.logging.log4j.core.lookup.StrSubstitutor;
+import org.apache.logging.log4j.util.Strings;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.usermodel.Range;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,10 +19,10 @@ import java.awt.*;
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 /**
  * Created by johnson on 25/05/2017.
@@ -34,7 +40,7 @@ public class Business {
         this.printPnl = printPnl;
         String dir = System.getProperty("usr.dir");
         resultDir = new File(dir, "result");
-        tmpDocFile = new File(dir, "tmp.doc");
+        tmpDocFile = new File(dir, "tmp.docx");
         if (!resultDir.exists()) {
             resultDir.mkdir();
         }
@@ -77,19 +83,24 @@ public class Business {
                                     continue;
                                 }
                                 if (value.contains("单位名称")) {
-                                    company = value.substring(value.indexOf("：") + 1);
+                                    company = getCellValue(row, 1);
                                 }
-                                value = getCellValue(row, 3);
+                                value = getCellValue(row, 5);
                                 if (value.contains("组织机构代码")) {
-                                    companyCode = value.substring(value.indexOf("：") + 1);
+                                    if (Strings.isNotBlank(value)) {
+                                        companyCode = value.substring(value.indexOf("：") + 1);
+                                    }
                                 }
                             } else {
                                 value = getCellValue(row, 0);
                                 if ("序号".equals(value)) {
                                     continue;
                                 }
-
                                 value = getCellValue(row, 2);
+                                if (value.length() != 15 && value.length() != 18) {
+                                    logger.debug("{}身份证长度不满足15，18位", value);
+                                    continue;
+                                }
                                 Dto dto = dtoMap.get(value);
                                 if (dto == null) {
                                     dto = new Dto();
@@ -103,6 +114,8 @@ public class Business {
                                 workrecord.setStartTime(getCellValue(row, 3));
                                 workrecord.setEndTime(getCellValue(row, 4));
                                 workrecord.setCompany(getCellValue(row, 5));
+                                workrecord.setReplay(!"否".equals(getCellValue(row, 6).trim()));
+                                workrecord.setPrincipal(Integer.parseInt(getCellValue(row, 7)));
                                 dto.addWorkRecord(workrecord);
                             }
                         }
@@ -146,31 +159,55 @@ public class Business {
         }
     }
 
+    private void resetReplacementHolder(Map<String, String> replacementMap, Dto dto) {
+        replacementMap.put("start_time", "");
+        replacementMap.put("end_time", "");
+        replacementMap.put("company_record", "");
+        replacementMap.put("replay", "");
+        replacementMap.put("principal", "");
+
+    }
+
     private void writeWord(Map<String, Dto> dtoMap) {
         int count = 0;
+        Map<String, String> replacementMap = new HashMap<>();
         for (Map.Entry<String, Dto> entry : dtoMap.entrySet()) {
-            logger.debug("写入第{}个doc", count++);
+            logger.debug("写入第{}个文件", ++count);
             Dto value = entry.getValue();
-            File targetFile = new File(resultDir, "事业单位在职和退休人员信息表(" + value.getUsername() + " " + value.getIdnum() + ").doc");
+            File targetFile = new File(resultDir, "个人缴费退还申请表(" + value.getUsername() + " " + value.getIdnum() + ").docx");
             InputStream is = null;
             try {
                 copyFile(tmpDocFile, targetFile);
                 is = new FileInputStream(targetFile);
-                HWPFDocument doc = new HWPFDocument(is);
-                Range rang = doc.getRange();
-                rang.replaceText("${company}", value.getCompany());
-                rang.replaceText("${username}", value.getUsername());
-                rang.replaceText("${idnum}", value.getIdnum());
+                XWPFDocument doc = new XWPFDocument(is);
+                List<XWPFTable> tables = doc.getTables();
+                XWPFTable xwpfTable = tables.get(0);
+                replacementMap.put("company", value.getCompany());
+                replacementMap.put("username", value.getUsername());
+                replacementMap.put("idnum", value.getIdnum());
+                replacementMap.put("sum", value.getSum() + "");
                 List<WorkRecord> workRecordList = value.getWorkRecordList();
-                int index = 15;
-                for (WorkRecord record : workRecordList) {
-                    rang.getParagraph(index).replaceText("${start_time}", record.getStartTime());
-                    rang.getParagraph(index + 1).replaceText("${end_time}", record.getEndTime());
-                    rang.getParagraph(index + 2).replaceText("${company_record}", record.getCompany());
-                    index += 5;
-                }
-                clearPlaceHoler(rang);
-                doc.write(targetFile);
+                xwpfTable.getRows().forEach(row -> {
+                    row.getTableCells().forEach(cell -> {
+                        String text = cell.getText();
+                        if (text.contains("${start_time}")) {
+                            if(workRecordList.isEmpty()){
+                                resetReplacementHolder(replacementMap, value);
+                            }else{
+                                WorkRecord record = workRecordList.remove(0);
+                                replacementMap.put("start_time", record.getStartTime());
+                                replacementMap.put("end_time", record.getEndTime());
+                                replacementMap.put("company_record", record.getCompany());
+                                replacementMap.put("replay", record.isReplay() ? "是" : "否");
+                                replacementMap.put("principal", record.getPrincipal() + "");
+                            }
+                        }
+                        replacePlaceholdersInParagraph(cell.getParagraphArray(0), replacementMap);
+                    });
+                });
+                OutputStream os = new FileOutputStream(targetFile);
+                doc.write(os);
+                os.close();
             } catch (Exception e) {
                 printMsg("写入失败");
                 logger.error(e.getMessage());
@@ -184,13 +221,20 @@ public class Business {
                 }
             }
         }
-        printMsg(dtoMap.size() + "个doc文件成功生成");
+        printMsg(dtoMap.size() + "个文件成功生成");
     }
 
-    private void clearPlaceHoler(Range rang) {
-        rang.replaceText("${start_time}", "");
-        rang.replaceText("${end_time}", "");
-        rang.replaceText("${company_record}", "");
+    private void replacePlaceholdersInParagraph(XWPFParagraph paragraph,
+                                                Map<String, String> replacementMap) {
+        String text = paragraph.getText();
+
+        // Word splits up a single piece of text into multiple runs in tables, so let's just delete those and create a single run instead.
+        while (!paragraph.getRuns().isEmpty()) {
+            paragraph.removeRun(0);
+        }
+
+        paragraph.createRun().setText(
+                StrSubstitutor.replace(text, replacementMap));
     }
 
 

@@ -7,7 +7,19 @@ import java.util.List;
  * Created by johnson on 25/05/2017.
  */
 public class Dto {
+    //公司
     private String company;
+    //组织机构代
+    private String companyCode;
+    //姓名
+    private String username;
+    //身份证
+    private String idnum;
+    //经历
+    private List<WorkRecord> workRecordList = new ArrayList<>();
+
+    public Dto() {
+    }
 
     public String getCompanyCode() {
         return companyCode;
@@ -15,14 +27,6 @@ public class Dto {
 
     public void setCompanyCode(String companyCode) {
         this.companyCode = companyCode;
-    }
-
-    private String companyCode;
-    private String username;
-    private String idnum;
-    private List<WorkRecord> workRecordList = new ArrayList<>();
-
-    public Dto() {
     }
 
     public void addWorkRecord(WorkRecord workRecord) {
@@ -57,15 +61,18 @@ public class Dto {
         return workRecordList;
     }
 
+    public int getSum() {
+        int sum=0;
+        for(WorkRecord record:workRecordList){
+            if(record.isReplay()){
+                sum+=record.getPrincipal();
+            }
+        }
+        return sum;
+    }
+
     public void setWorkRecordList(List<WorkRecord> workRecordList) {
         this.workRecordList = workRecordList;
     }
 
-    @Override
-    public String toString() {
-        return "Dto{" +
-                "username='" + username + '\'' +
-                ", idnum='" + idnum + '\'' +
-                '}';
-    }
 }
